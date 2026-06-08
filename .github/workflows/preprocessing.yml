@@ -3,15 +3,7 @@ name: Automated Preprocessing Pipeline
 on:
   push:
     branches: [main]
-    paths:
-      - "credit_scoring_raw.csv"
-      - "automate_Dea-Zasqia-Pasaribu-Malau.py"
   workflow_dispatch:
-    inputs:
-      input_file:
-        description: "Path ke file raw CSV"
-        required: false
-        default: "credit_scoring_raw.csv"
 
 jobs:
   preprocessing:
@@ -32,48 +24,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas numpy scikit-learn
 
-      - name: Verify Environment
-        run: |
-          python --version
-          python -c "import pandas, numpy, sklearn; print('pandas:', pandas.__version__, '| numpy:', numpy.__version__, '| sklearn:', sklearn.__version__)"
-
       - name: Run Preprocessing Automate Script
         run: |
-          python automate_Dea-Zasqia-Pasaribu-Malau.py \
-            --input ${{ github.event.inputs.input_file || 'credit_scoring_raw.csv' }} \
-            --output credit_scoring_preprocessing
+          python preprocessing/automate_Dea-Zasqia-Pasaribu-Malau.py \
+            --input credit_scoring_raw.csv \
+            --output preprocessing/credit_scoring_preprocessing
 
       - name: Verify Output Files
         run: |
-          echo "=== Cek output preprocessing ==="
-          ls -lh credit_scoring_preprocessing/
+          ls -lh preprocessing/credit_scoring_preprocessing/
           python -c "
           import pandas as pd
-          X_train = pd.read_csv('credit_scoring_preprocessing/X_train.csv')
-          X_test  = pd.read_csv('credit_scoring_preprocessing/X_test.csv')
-          y_train = pd.read_csv('credit_scoring_preprocessing/y_train.csv')
-          y_test  = pd.read_csv('credit_scoring_preprocessing/y_test.csv')
-          print('X_train:', X_train.shape)
-          print('X_test :', X_test.shape)
-          print('y_train:', y_train.shape)
-          print('y_test :', y_test.shape)
-          assert X_train.isnull().sum().sum() == 0, 'Ada missing values!'
-          print('✅ Tidak ada missing values')
-          print('✅ Preprocessing berhasil!')
+          X_train = pd.read_csv('preprocessing/credit_scoring_preprocessing/X_train.csv')
+          assert X_train.isnull().sum().sum() == 0
+          print('Preprocessing berhasil!')
           "
 
       - name: Upload Preprocessed Dataset as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: credit_scoring_preprocessed
-          path: credit_scoring_preprocessing/
+          path: preprocessing/credit_scoring_preprocessing/
           retention-days: 30
 
       - name: Commit Preprocessed Data to Repository
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add credit_scoring_preprocessing/
+          git add preprocessing/credit_scoring_preprocessing/
           git diff --staged --quiet || git commit -m "chore: update preprocessed dataset [skip ci]"
           git push
         env:
